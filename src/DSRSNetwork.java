@@ -13,6 +13,8 @@ public class DSRSNetwork {
         try{
 
             Socket socket = new Socket(client.getHostname(), client.getPort());
+            // 5 second timeout
+            socket.setSoTimeout(5*1000);
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
             // Send ping message to the client
