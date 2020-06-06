@@ -3,16 +3,9 @@ import java.net.*;
 
 public class DSRSNetwork {
 
-    public static void main(String[] args) {
+    private static final String dronename = "Relay1";
 
-        // Currently, hard code in the data that we will later read from csv
-        String clientName = "Relay2";
-        String clientType = "Relay";
-        String hostname = "127.0.0.1";
-        int port = 10128;
-        // int currentResponseTime = 6;
-
-        // Ping a neighbour
+    private static int pingClient(String hostname, int port){
         try{
 
             Socket socket = new Socket(hostname, port);
@@ -33,9 +26,39 @@ public class DSRSNetwork {
 
             int timeTaken = (int)((endTime - startTime)/1000);
 
-            // Print out the message
-            System.out.println(msg);
-            System.out.println(timeTaken);
+            return timeTaken;
+
+        } catch (IOException e){
+            System.err.format("Something went wrong: '%s'%n", e.getMessage());
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    public static void main(String[] args) {
+
+        try{
+
+            String row;
+            BufferedReader csvReader = new BufferedReader(new FileReader("./clients-" + dronename + ".csv"));
+            while ((row = csvReader.readLine()) != null) {
+
+                // Read the data from the .csv file
+                String[] data = row.split(",");
+                // Parse the data, assigning to variables
+                String clientName = data[0];
+                String clientType = data[1];
+                String[] hostnamePort = data[2].split(":");
+                String hostname = hostnamePort[0];
+                int port = Integer.parseInt(hostnamePort[1]);
+                int lastResponseTime = Integer.parseInt(data[3]);
+
+                int newResponseTime = pingClient(hostname, port);
+
+                System.out.println("" + clientName + " " + port + " " + newResponseTime);
+
+            }
+            csvReader.close();
 
         } catch (IOException e){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
