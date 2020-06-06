@@ -7,6 +7,7 @@ public class DSRSNetwork {
 
     private static final String dronename = "Relay1";
     private static final String csvName = "./clients-" + dronename + ".csv";
+    private static final String message = "PING";
     private static int pingNumber = 1;
 
     private static int pingClient(Client client){
@@ -18,7 +19,7 @@ public class DSRSNetwork {
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
             // Send ping message to the client
-            dataOut.writeUTF("PING\n");
+            dataOut.writeUTF(message);
 
             // Start timing
             long startTime = System.currentTimeMillis();
