@@ -4,6 +4,7 @@ import java.net.*;
 public class DSRSNetwork {
 
     private static final String dronename = "Relay1";
+    private static final String csvName = "./clients-" + dronename + ".csv";
 
     private static int pingClient(String hostname, int port){
         try{
@@ -37,10 +38,14 @@ public class DSRSNetwork {
 
     public static void main(String[] args) {
 
-        try{
+        // Keep track of the content to overwrite the CSV with
+        StringBuilder newCSVContents = new StringBuilder();
 
+        try{
+            
+            // Read CSV and ping clients
             String row;
-            BufferedReader csvReader = new BufferedReader(new FileReader("./clients-" + dronename + ".csv"));
+            BufferedReader csvReader = new BufferedReader(new FileReader(csvName));
             while ((row = csvReader.readLine()) != null) {
 
                 // Read the data from the .csv file
@@ -51,14 +56,24 @@ public class DSRSNetwork {
                 String[] hostnamePort = data[2].split(":");
                 String hostname = hostnamePort[0];
                 int port = Integer.parseInt(hostnamePort[1]);
-                int lastResponseTime = Integer.parseInt(data[3]);
+                int responseTime = Integer.parseInt(data[3]);
 
-                int newResponseTime = pingClient(hostname, port);
+                if(!clientName.equals(dronename)){ // Skip this ping if the currently read client corresponds to this client
+                    responseTime = pingClient(hostname, port);
+                }
 
-                System.out.println("" + clientName + " " + port + " " + newResponseTime);
+                String output = "" + clientName + "," + clientType + "," + hostname + ":" + port + "," + responseTime + System.lineSeparator();
+                System.out.println(output);
+                newCSVContents.append(output);
 
             }
             csvReader.close();
+
+            // Overwrite the CSV with new data
+            FileWriter csvWriter = new FileWriter(csvName);
+            csvWriter.append(newCSVContents.toString());
+            csvWriter.flush();
+            csvWriter.close();
 
         } catch (IOException e){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
