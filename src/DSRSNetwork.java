@@ -31,7 +31,7 @@ public class DSRSNetwork {
             // Stop timing
             long endTime = System.currentTimeMillis();
 
-            long timeTaken = endTime - startTime;
+            int timeTaken = (int)((endTime - startTime)/1000);
 
             // Print out the message
             System.out.println(msg);

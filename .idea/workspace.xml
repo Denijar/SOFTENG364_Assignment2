@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="02b12464-c7b7-4a8f-9884-1100ebf8ef77" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/DSRSNetwork.class" beforeDir="false" afterPath="$PROJECT_DIR$/src/DSRSNetwork.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/DSRSNetwork.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/DSRSNetwork.java" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
