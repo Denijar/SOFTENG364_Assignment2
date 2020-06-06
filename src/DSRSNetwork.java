@@ -1,15 +1,18 @@
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DSRSNetwork {
 
     private static final String dronename = "Relay1";
     private static final String csvName = "./clients-" + dronename + ".csv";
+    private static int pingNumber = 1;
 
-    private static int pingClient(String hostname, int port){
+    private static int pingClient(Client client){
         try{
 
-            Socket socket = new Socket(hostname, port);
+            Socket socket = new Socket(client.getHostname(), client.getPort());
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
             // Send ping message to the client
@@ -24,56 +27,77 @@ public class DSRSNetwork {
 
             // Stop timing
             long endTime = System.currentTimeMillis();
-
             int timeTaken = (int)((endTime - startTime)/1000);
 
+            client.setResponseTime(timeTaken);
             return timeTaken;
 
         } catch (IOException e){
-            System.err.format("Something went wrong: '%s'%n", e.getMessage());
-            e.printStackTrace();
+            client.setResponseTime(-1);
+            return -1;
         }
-        return -1;
     }
 
     public static void main(String[] args) {
 
-        // Keep track of the content to overwrite the CSV with
-        StringBuilder newCSVContents = new StringBuilder();
-
         try{
-            
-            // Read CSV and ping clients
+
+            System.out.println("Starting ping process #" + pingNumber);
+
+            // Read CSV and create Client list
             String row;
             BufferedReader csvReader = new BufferedReader(new FileReader(csvName));
+            List<Client> clientList = new ArrayList<>();
+            // Keep track of the number of clients that have the same name as me
+            // for purpose of accurate printing
+            int numMyself = 0;
+
+            System.out.println("Reading client list: starting");
+
             while ((row = csvReader.readLine()) != null) {
 
-                // Read the data from the .csv file
+                // Read the data from the .csv file and create Client object
                 String[] data = row.split(",");
-                // Parse the data, assigning to variables
-                String clientName = data[0];
-                String clientType = data[1];
-                String[] hostnamePort = data[2].split(":");
-                String hostname = hostnamePort[0];
-                int port = Integer.parseInt(hostnamePort[1]);
-                int responseTime = Integer.parseInt(data[3]);
+                Client client = new Client(data);
 
-                if(!clientName.equals(dronename)){ // Skip this ping if the currently read client corresponds to this client
-                    responseTime = pingClient(hostname, port);
+                if(client.getClientName().equals(dronename)){
+                    numMyself++;
                 }
 
-                String output = "" + clientName + "," + clientType + "," + hostname + ":" + port + "," + responseTime + System.lineSeparator();
-                System.out.println(output);
-                newCSVContents.append(output);
-
+                clientList.add(client);
             }
             csvReader.close();
 
+            System.out.println("Reading client list: finished - " + (clientList.size() - numMyself) + " clients read");
+            System.out.println("Pinging all clients: starting");
+
+            // Ping all clients
+            for(Client client : clientList){
+                if(client.getClientName().equals(dronename)){
+                    continue;
+                }
+                System.out.print("- Pinging " + client.getClientName() + "...");
+                int timeTaken = pingClient(client);
+                if(timeTaken == -1){
+                    System.out.println("could not ping");
+                } else {
+                    System.out.println("ping received after " + client.getResponseTime() + "s");
+                }
+            }
+
+            System.out.println("Pinging client list: finished - " + (clientList.size() - numMyself) + " clients pinged");
+            System.out.println("Writing all clients: starting");
+
             // Overwrite the CSV with new data
             FileWriter csvWriter = new FileWriter(csvName);
-            csvWriter.append(newCSVContents.toString());
+            for(Client client : clientList){
+                csvWriter.append(client.toString());
+            }
             csvWriter.flush();
             csvWriter.close();
+
+            System.out.println("Writing client list: finished - " + (clientList.size() - numMyself) + " clients written");
+            System.out.println("Ping process #" + pingNumber + " finished");
 
         } catch (IOException e){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
