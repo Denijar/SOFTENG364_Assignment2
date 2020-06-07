@@ -9,6 +9,7 @@ public class DSRSNetwork {
     private static final String thisDroneName = "Relay1";
     private static final String csvName = "./clients-" + thisDroneName + ".csv";
     private static final String pingMessage = "PING\n";
+    private static final String ackMessage = "ACK\n";
     private static int pingNumber = 1;
 
     private static int pingClient(Client client){
@@ -58,15 +59,11 @@ public class DSRSNetwork {
             System.out.println("Reading client list: starting");
 
             while ((row = csvReader.readLine()) != null) {
-
                 // Read the data from the .csv file and create Client object
-                String[] data = row.split(",");
-                Client client = new Client(data);
-
+                Client client = new Client(row);
                 if(client.getClientName().equals(thisDroneName)){
                     numMyself++;
                 }
-
                 clientList.add(client);
             }
             csvReader.close();
@@ -116,6 +113,7 @@ public class DSRSNetwork {
         try {
 
             DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+            // Receive message and process
             String message = dataIn.readUTF();
             System.out.println("message received: " + message);
 
@@ -135,7 +133,6 @@ public class DSRSNetwork {
             // Open a socket and wait for incoming messages
             ServerSocket serverSocket = new ServerSocket(localPort);
             while(true){
-                System.out.println("Waiting for incoming");
                 Socket socket = serverSocket.accept();
                 handleIncomingConnection(socket);
             }
