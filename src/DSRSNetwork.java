@@ -10,15 +10,11 @@ public class DSRSNetwork {
     private static final String csvName = "./clients-" + thisDroneName + ".csv";
     private static final String pingMessage = "PING\n";
     private static final String ackMessage = "ACK\n";
-    private static int pingNumber = 1;
 
     private static CostTable costTable;
 
     private static void processCalculation(String data){
-        String[] splitData = data.split("=");
-        String destinationDrone = splitData[0];
-        int cost = Integer.parseInt(splitData[1]);
-        System.out.print("- Calculating cost for " + destinationDrone + " ...");
+
 
     }
 
@@ -34,28 +30,24 @@ public class DSRSNetwork {
             dataOut.writeUTF(ackMessage);
             dataOut.flush();
             dataOut.close();
+            dataIn.close();
 
             // Process message
             String[] splitMessage = message.split(":");
             String headerType = splitMessage[0];
             String headerOriginatingDrone = splitMessage[1];
             // TODO: check for this being an update message
-            String data = splitMessage[2];
-            String footer = splitMessage[3];
+            String updates = splitMessage[2];
 
             // Process data
             System.out.println("Starting DV update calculation");
-            String[] splitData = data.split(",");
-            for(int i = 0; i < splitData.length; i++){
-                processCalculation(splitData[i]);
-            }
+            costTable.processUpdates(headerOriginatingDrone, updates);
+            System.out.println("DV update calculation finished");
 
         } catch (IOException e){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
             e.printStackTrace();
         }
-
-        System.out.println("DV update calculation finished");
     }
 
     private static int pingClient(Client client){
@@ -96,7 +88,7 @@ public class DSRSNetwork {
         List<Client> clientList = new ArrayList<>();
         try{
 
-            System.out.println("Starting ping process #" + pingNumber);
+            System.out.println("Starting ping process #1");
 
             // Read CSV
             String row;
@@ -147,7 +139,7 @@ public class DSRSNetwork {
             csvWriter.close();
 
             System.out.println("Writing client list: finished - " + (clientList.size() - numMyself) + " clients written");
-            System.out.println("Ping process #" + pingNumber + " finished");
+            System.out.println("Ping process #1 finished");
 
         } catch (IOException e){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
