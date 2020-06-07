@@ -5,9 +5,10 @@ import java.util.List;
 
 public class DSRSNetwork {
 
+    private static final int localPort = 10120;
     private static final String thisDroneName = "Relay1";
     private static final String csvName = "./clients-" + thisDroneName + ".csv";
-    private static final String message = "PING";
+    private static final String pingMessage = "PING\n";
     private static int pingNumber = 1;
 
     private static int pingClient(Client client){
@@ -19,7 +20,7 @@ public class DSRSNetwork {
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
             // Send ping message to the client
-            dataOut.writeUTF(message);
+            dataOut.writeUTF(pingMessage);
 
             // Start timing
             long startTime = System.currentTimeMillis();
@@ -109,7 +110,42 @@ public class DSRSNetwork {
         return;
     }
 
+    private static void handleIncomingConnection(Socket socket){
+        System.out.println("New DVs received");
+        System.out.println("Starting DV update calculation");
+        try {
+
+            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+            String message = dataIn.readUTF();
+            System.out.println("message received: " + message);
+
+        } catch (IOException e){
+            System.err.format("Something went wrong: '%s'%n", e.getMessage());
+            e.printStackTrace();
+        }
+
+        System.out.println("DV update calculation finished");
+
+    }
+
     public static void main(String[] args) {
         performPingProcess();
+
+        try{
+            // Open a socket and wait for incoming messages
+            ServerSocket serverSocket = new ServerSocket(localPort);
+            while(true){
+                System.out.println("Waiting for incoming");
+                Socket socket = serverSocket.accept();
+                handleIncomingConnection(socket);
+            }
+
+
+        } catch (IOException e ){
+            System.err.format("Something went wrong: '%s'%n", e.getMessage());
+            e.printStackTrace();
+        }
+
+
     }
 }
