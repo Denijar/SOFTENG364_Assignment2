@@ -41,8 +41,7 @@ public class DSRSNetwork {
         }
     }
 
-    public static void main(String[] args) {
-
+    private static void performPingProcess(){
         try{
 
             System.out.println("Starting ping process #" + pingNumber);
@@ -106,8 +105,10 @@ public class DSRSNetwork {
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
             e.printStackTrace();
         }
+        return;
+    }
 
-
-
+    public static void main(String[] args) {
+        performPingProcess();
     }
 }
