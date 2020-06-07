@@ -5,8 +5,8 @@ import java.util.List;
 
 public class DSRSNetwork {
 
-    private static final String dronename = "Relay1";
-    private static final String csvName = "./clients-" + dronename + ".csv";
+    private static final String thisDroneName = "Relay1";
+    private static final String csvName = "./clients-" + thisDroneName + ".csv";
     private static final String message = "PING";
     private static int pingNumber = 1;
 
@@ -62,7 +62,7 @@ public class DSRSNetwork {
                 String[] data = row.split(",");
                 Client client = new Client(data);
 
-                if(client.getClientName().equals(dronename)){
+                if(client.getClientName().equals(thisDroneName)){
                     numMyself++;
                 }
 
@@ -75,7 +75,8 @@ public class DSRSNetwork {
 
             // Ping all clients
             for(Client client : clientList){
-                if(client.getClientName().equals(dronename)){
+                // Skip a client if they have the same name as me
+                if(client.getClientName().equals(thisDroneName)){
                     continue;
                 }
                 System.out.print("- Pinging " + client.getClientName() + "...");
