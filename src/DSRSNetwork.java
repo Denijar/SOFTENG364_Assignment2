@@ -12,6 +12,52 @@ public class DSRSNetwork {
     private static final String ackMessage = "ACK\n";
     private static int pingNumber = 1;
 
+    private static CostTable costTable;
+
+    private static void processCalculation(String data){
+        String[] splitData = data.split("=");
+        String destinationDrone = splitData[0];
+        int cost = Integer.parseInt(splitData[1]);
+        System.out.print("- Calculating cost for " + destinationDrone + " ...");
+
+    }
+
+    private static void handleIncomingConnection(Socket socket){
+        System.out.println("New DVs received");
+        try {
+
+            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+            DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
+
+            // Receive message and acknowledge
+            String message = dataIn.readUTF();
+            dataOut.writeUTF(ackMessage);
+            dataOut.flush();
+            dataOut.close();
+
+            // Process message
+            String[] splitMessage = message.split(":");
+            String headerType = splitMessage[0];
+            String headerOriginatingDrone = splitMessage[1];
+            // TODO: check for this being an update message
+            String data = splitMessage[2];
+            String footer = splitMessage[3];
+
+            // Process data
+            System.out.println("Starting DV update calculation");
+            String[] splitData = data.split(",");
+            for(int i = 0; i < splitData.length; i++){
+                processCalculation(splitData[i]);
+            }
+
+        } catch (IOException e){
+            System.err.format("Something went wrong: '%s'%n", e.getMessage());
+            e.printStackTrace();
+        }
+
+        System.out.println("DV update calculation finished");
+    }
+
     private static int pingClient(Client client){
         try{
 
@@ -35,6 +81,9 @@ public class DSRSNetwork {
             int timeTaken = (int)((endTime - startTime)/1000);
 
             client.setResponseTime(timeTaken);
+            dataOut.flush();
+            dataOut.close();
+            dataOut.close();
             return timeTaken;
 
         } catch (IOException e){
@@ -43,15 +92,15 @@ public class DSRSNetwork {
         }
     }
 
-    private static void performPingProcess(){
+    private static List<Client> performPingProcess(){
+        List<Client> clientList = new ArrayList<>();
         try{
 
             System.out.println("Starting ping process #" + pingNumber);
 
-            // Read CSV and create Client list
+            // Read CSV
             String row;
             BufferedReader csvReader = new BufferedReader(new FileReader(csvName));
-            List<Client> clientList = new ArrayList<>();
             // Keep track of the number of clients that have the same name as me
             // for purpose of accurate printing
             int numMyself = 0;
@@ -104,30 +153,12 @@ public class DSRSNetwork {
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
             e.printStackTrace();
         }
-        return;
-    }
-
-    private static void handleIncomingConnection(Socket socket){
-        System.out.println("New DVs received");
-        System.out.println("Starting DV update calculation");
-        try {
-
-            DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-            // Receive message and process
-            String message = dataIn.readUTF();
-            System.out.println("message received: " + message);
-
-        } catch (IOException e){
-            System.err.format("Something went wrong: '%s'%n", e.getMessage());
-            e.printStackTrace();
-        }
-
-        System.out.println("DV update calculation finished");
-
+        return clientList;
     }
 
     public static void main(String[] args) {
-        performPingProcess();
+        List<Client> clientList = performPingProcess();
+        costTable = new CostTable(thisDroneName, clientList);
 
         try{
             // Open a socket and wait for incoming messages
@@ -136,7 +167,6 @@ public class DSRSNetwork {
                 Socket socket = serverSocket.accept();
                 handleIncomingConnection(socket);
             }
-
 
         } catch (IOException e ){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
