@@ -150,15 +150,6 @@ public class CostTable {
                 }
             }
         }
-
-        for(int i = 0; i < _costTable.length; i++){
-            for(int j = 0; j < _costTable.length; j++){
-                System.out.print(_costTable[i][j] + ",");
-            }
-            System.out.println();
-        }
-        System.out.println(_destinationToForwarder);
-
         sendUpdates(updatesToSend);
     }
 

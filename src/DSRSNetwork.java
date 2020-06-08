@@ -31,13 +31,16 @@ public class DSRSNetwork {
             String[] splitMessage = message.split(":");
             String headerType = splitMessage[0];
             String headerOriginatingDrone = splitMessage[1];
-            // TODO: check for this being an update message
-            String updates = splitMessage[2];
+            if(headerType.equals("UPDATE")){
+                String updates = splitMessage[2];
 
-            // Process data
-            System.out.println("Starting DV update calculation");
-            costTable.processUpdates(headerOriginatingDrone, updates);
-            System.out.println("DV update calculation finished");
+                // Process data
+                System.out.println("Starting DV update calculation");
+                costTable.processUpdates(headerOriginatingDrone, updates);
+                System.out.println("DV update calculation finished");
+            } else {
+                System.out.println("Message received was not type UPDATE, no DV update calculation performed");
+            }
 
         } catch (IOException e){
             System.err.format("Something went wrong: '%s'%n", e.getMessage());
@@ -126,8 +129,8 @@ public class DSRSNetwork {
                 }
             }
 
-            System.out.println("Pinging client list: finished - " + (clientList.size() - numMyself) + " clients pinged");
-            System.out.println("Writing all clients: starting");
+            System.out.println("Pinging all clients: finished - " + (clientList.size() - numMyself) + " clients pinged");
+            System.out.println("Writing client list: started");
 
             // Overwrite the CSV with new data
             FileWriter csvWriter = new FileWriter(csvName);
