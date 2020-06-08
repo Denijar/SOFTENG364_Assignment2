@@ -25,6 +25,8 @@ public class Client {
         return _clientName;
     }
 
+    String getClientType() { return _clientType; }
+
     String getHostname(){
         return _hostname;
     }

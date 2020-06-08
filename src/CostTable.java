@@ -54,6 +54,7 @@ public class CostTable {
             _nameToIndex.put(client.getClientName(), index);
             _costTable[0][index] = client.getResponseTime();
             if(client.getResponseTime() != -1){
+                // Record who our neighbours are
                 _neighboursCost.put(client.getClientName(), client.getResponseTime());
                 // Neighbours can be reached directly
                 _destinationToForwarder.put(client.getClientName(), client.getClientName());
@@ -63,11 +64,7 @@ public class CostTable {
         // Initialise rest of the cost table
         for(int i = 1; i < index + 1; i++){
             for(int j = 0; j < index + 1; j++){
-                if(i == j){
-                    _costTable[i][j] = 0;
-                } else {
-                    _costTable[i][j] = -1;
-                }
+                _costTable[i][j] = -1;
             }
         }
         createForwardingTable();
@@ -104,10 +101,19 @@ public class CostTable {
 
             int previousCost = _costTable[0][_nameToIndex.get(destination)];
             int newMin = -1;
-            // Keep track of the neighbour that caused the new min to be generated
             String neighbourCausingChange = "";
 
-            // Iterate through neighbours, finding cost of reaching destination from each neighbour
+            // Check if this destination is a neighbour the initialise the first min - "cost of reaching it through me"
+            if (_neighboursCost.keySet().contains(destination)){ // If the destination is a neighbour
+                newMin = _neighboursCost.get(destination);
+                neighbourCausingChange = destination; // Go directly to the neighbour
+            }
+
+            // If newMin is still -1, then this means the destination is not a neighbour
+
+            // Now find if we can get to it cheaper by going through someone else
+            // Note that if the destination is the current neighbour, and a neighbour has their diagonal value set to 0, then this calculation will be the same as above
+            // Iterate through neighbours, finding cost of reaching destination from each neighbour - "cost of reaching it through someone else"
             for(String neighbour : _neighboursCost.keySet()){
                 int costFromMeToNeighbour = _neighboursCost.get(neighbour); // This should never equal -1, but check for consistency
                 int costFromNeighbourToDestination = _costTable[_nameToIndex.get(neighbour)][_nameToIndex.get(destination)];
@@ -129,21 +135,29 @@ public class CostTable {
                     _destinationToForwarder.remove(destination);
                     updatesToSend.add(destination);
                     System.out.println("cost updated to -1");
-                } else { // Skip past this node entirely - nothing has changed
+                } else { // Skip past this node - nothing has changed
                     System.out.println("no change");
                 }
 
-            } else { // This destination is reachable
+            } else { // This destination is reachable. We will have definitely set the value of neighbourCausingChange at this point
                 if(!(newMin == previousCost && _destinationToForwarder.get(destination).equals(neighbourCausingChange))){ // The only case to not update is if the cost and best choice neighbour has not changed
                     _destinationToForwarder.put(destination, neighbourCausingChange);
                     updatesToSend.add(destination);
                     System.out.println("cost updated to " + newMin + " via " + neighbourCausingChange);
-                } else {
+                } else { // Skip past this node - nothing has changed
                     System.out.println("no change");
 
                 }
             }
         }
+
+        for(int i = 0; i < _costTable.length; i++){
+            for(int j = 0; j < _costTable.length; j++){
+                System.out.print(_costTable[i][j] + ",");
+            }
+            System.out.println();
+        }
+        System.out.println(_destinationToForwarder);
 
         sendUpdates(updatesToSend);
     }
@@ -176,11 +190,14 @@ public class CostTable {
         }
         updateMessage.append(updatesToSend.get(updatesToSend.size() - 1) + "=" + _costTable[0][_nameToIndex.get(updatesToSend.get(updatesToSend.size() - 1))]);
         updateMessage.append(":" + updatesToSend.size() + "\n");
-        // Send an update to each neighbour regarding these new costs
+        // Send an update to each neighbour relay drone regarding these new costs
         for(String neighbour : _neighboursCost.keySet()){
+            Client client = _nameToClientObject.get(neighbour);
+            if(!client.getClientType().equals("Relay")){ // We only send updates to Relay drones. Skip if they are not a relay
+                continue;
+            }
             try{
                 System.out.print("Sending to " + neighbour + "...");
-                Client client = _nameToClientObject.get(neighbour);
                 Socket socket = new Socket(client.getHostname(), client.getPort());
                 DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
                 DataInputStream dataIn = new DataInputStream(socket.getInputStream());

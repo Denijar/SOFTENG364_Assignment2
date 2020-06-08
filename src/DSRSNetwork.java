@@ -62,7 +62,7 @@ public class DSRSNetwork {
             // Wait for the response from the client
             DataInputStream dataIn = new DataInputStream(socket.getInputStream());
             String msg = dataIn.readUTF();
-            
+
             // Stop timing
             long endTime = System.currentTimeMillis();
             int timeTaken = (int)((endTime - startTime)/1000);
