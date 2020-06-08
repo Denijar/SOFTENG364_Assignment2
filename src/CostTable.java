@@ -1,3 +1,8 @@
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -6,21 +11,21 @@ import java.util.Map;
 public class CostTable {
 
     private String _thisDroneName;
-    private List<Client> _clientList;
+    private String _forwardingTableFileName;
     // Map: client name to the client object (this will not include an object for this drone)
-    private Map<String, Client> nameToClientObject = new HashMap<>();
+    private Map<String, Client> _nameToClientObject = new HashMap<>();
     // Map: client name to their index in the cost table (this drone will be indexed at 0)
-    private Map<String, Integer> nameToIndex = new HashMap<>();
+    private Map<String, Integer> _nameToIndex = new HashMap<>();
     // Map: store of forwarding table data. Maps destination node to the best choice node for forwarding. No entry means it is unreachable
-    private Map<String, String> destinationToForwarder = new HashMap<>();
+    private Map<String, String> _destinationToForwarder = new HashMap<>();
     // Map of neighbours and the cost to get to that neighbour
-    private Map<String, Integer> neighboursCost = new HashMap<>();
+    private Map<String, Integer> _neighboursCost = new HashMap<>();
     // Cost table - ROW is FROM, COLUMN is DESTINATION
-    private int[][] costTable;
+    private int[][] _costTable;
 
     public CostTable(String thisDroneName, List<Client> clientList){
         _thisDroneName = thisDroneName;
-        _clientList = clientList;
+        _forwardingTableFileName = "./forwarding-" + _thisDroneName + ".csv";
 
         // Remove this drone if it appears in the client list
         // We want to control the fact that this drone appears at index 0 of the cost table, so easiest to just remove it
@@ -33,25 +38,25 @@ public class CostTable {
         clientList.removeAll(found);
 
         // Instantiate cost table (+1 because we will put this client at index 0)
-        costTable = new int[clientList.size() + 1][clientList.size() + 1];
+        _costTable = new int[clientList.size() + 1][clientList.size() + 1];
 
         // Initialise the hash maps and first row of cost table
 
         // Initialise for this drone
         int index = 0;
-        nameToIndex.put(_thisDroneName, index);
-        costTable[0][0] = 0;
+        _nameToIndex.put(_thisDroneName, index);
+        _costTable[0][0] = 0;
 
         // Initialise for the rest of the clients
         for(Client client : clientList){
             index++;
-            nameToClientObject.put(client.getClientName(), client);
-            nameToIndex.put(client.getClientName(), index);
-            costTable[0][index] = client.getResponseTime();
+            _nameToClientObject.put(client.getClientName(), client);
+            _nameToIndex.put(client.getClientName(), index);
+            _costTable[0][index] = client.getResponseTime();
             if(client.getResponseTime() != -1){
-                neighboursCost.put(client.getClientName(), client.getResponseTime());
+                _neighboursCost.put(client.getClientName(), client.getResponseTime());
                 // Neighbours can be reached directly
-                destinationToForwarder.put(client.getClientName(), client.getClientName());
+                _destinationToForwarder.put(client.getClientName(), client.getClientName());
             }
         }
 
@@ -59,21 +64,12 @@ public class CostTable {
         for(int i = 1; i < index + 1; i++){
             for(int j = 0; j < index + 1; j++){
                 if(i == j){
-                    costTable[i][j] = 0;
+                    _costTable[i][j] = 0;
                 } else {
-                    costTable[i][j] = -1;
+                    _costTable[i][j] = -1;
                 }
             }
         }
-
-        // FIXME: remove this print
-        for(int i = 0; i < index + 1; i++){
-            for(int j = 0; j < index + 1; j++){
-                System.out.print(costTable[i][j]);
-            }
-            System.out.println("");
-        }
-
         createForwardingTable();
     }
 
@@ -81,41 +77,40 @@ public class CostTable {
         String[] splitUpdates = updates.split(",");
 
         // Add the new cost to the table for each update
-        for(int i = 0; i < splitUpdates.length; i++){
-            String[] destinationAndCost = splitUpdates[i].split("=");
+        for (String splitUpdate : splitUpdates) {
+            String[] destinationAndCost = splitUpdate.split("=");
             String destinationDrone = destinationAndCost[0];
             int cost = Integer.parseInt(destinationAndCost[1]);
 
-            costTable[nameToIndex.get(headerOriginatingDrone)][nameToIndex.get(destinationDrone)] = cost;
+            _costTable[_nameToIndex.get(headerOriginatingDrone)][_nameToIndex.get(destinationDrone)] = cost;
         }
-
-        // TODO: Where to call?
+        updateCostTable();
         createForwardingTable();
     }
 
-    private void createForwardingTable(){
+    private void updateCostTable(){
 
         // Updates to send out
         List<String> updatesToSend = new ArrayList<>();
 
         // Iterate through each possible destination
-        for(String destination : nameToIndex.keySet()){
+        for(String destination : _nameToIndex.keySet()){
             // Skip me
             if(destination.equals(_thisDroneName)){
                 continue;
             }
 
-            System.out.println(destination);
+            System.out.print("- Calculating cost for " + destination + "...");
 
-            int previousCost = costTable[0][nameToIndex.get(destination)];
+            int previousCost = _costTable[0][_nameToIndex.get(destination)];
             int newMin = -1;
             // Keep track of the neighbour that caused the new min to be generated
             String neighbourCausingChange = "";
 
             // Iterate through neighbours, finding cost of reaching destination from each neighbour
-            for(String neighbour : neighboursCost.keySet()){
-                int costFromMeToNeighbour = neighboursCost.get(neighbour); // This should never equal -1, but check for consistency
-                int costFromNeighbourToDestination = costTable[nameToIndex.get(neighbour)][nameToIndex.get(destination)];
+            for(String neighbour : _neighboursCost.keySet()){
+                int costFromMeToNeighbour = _neighboursCost.get(neighbour); // This should never equal -1, but check for consistency
+                int costFromNeighbourToDestination = _costTable[_nameToIndex.get(neighbour)][_nameToIndex.get(destination)];
                 // Find the min cost. Remember any appearance of -1 means this connection should not be considered
                 if(!(costFromMeToNeighbour == -1 || costFromNeighbourToDestination == -1)){
                     int thisCost = costFromMeToNeighbour + costFromNeighbourToDestination;
@@ -127,54 +122,83 @@ public class CostTable {
             }
 
             // No matter what, we are updating the table
-            costTable[0][nameToIndex.get(destination)] = newMin;
-
-            System.out.println(destinationToForwarder);
-            System.out.println(destination);
+            _costTable[0][_nameToIndex.get(destination)] = newMin;
 
             if(newMin == -1){ // This destination is unreachable
                 if(!(previousCost == -1)){ // It was previously reachable, update
-                    destinationToForwarder.remove(destination);
+                    _destinationToForwarder.remove(destination);
                     updatesToSend.add(destination);
-                } else {
-                    continue; // Skip past this node entirely - nothing has changed
+                    System.out.println("cost updated to -1");
+                } else { // Skip past this node entirely - nothing has changed
+                    System.out.println("no change");
                 }
+
             } else { // This destination is reachable
-                if(newMin == previousCost && destinationToForwarder.get(destination).equals(neighbourCausingChange)){ // The only case to not update is if the cost and best choice neighbour has not changed
-                    continue; // Skip past this destination node entirely - nothing has changed
-                } else {
-                    destinationToForwarder.put(destination, neighbourCausingChange);
+                if(!(newMin == previousCost && _destinationToForwarder.get(destination).equals(neighbourCausingChange))){ // The only case to not update is if the cost and best choice neighbour has not changed
+                    _destinationToForwarder.put(destination, neighbourCausingChange);
                     updatesToSend.add(destination);
+                    System.out.println("cost updated to " + newMin + " via " + neighbourCausingChange);
+                } else {
+                    System.out.println("no change");
+
                 }
             }
         }
 
-        // FIXME: remove these prints print
-        // Hypothesis - if we run this the first time, this table should be empty. All minimum costs should be the same
-        for(int i = 0; i < costTable.length; i++){
-            for(int j = 0; j < costTable.length; j++){
-                System.out.print(costTable[i][j]);
+        sendUpdates(updatesToSend);
+    }
+
+    private void createForwardingTable(){
+        // Create the new forwarding table
+        try {
+            FileWriter csvWriter = new FileWriter(_forwardingTableFileName);
+            for(String destination : _destinationToForwarder.keySet()){
+                csvWriter.append(destination + "," + _destinationToForwarder.get(destination) + System.lineSeparator());
             }
-            System.out.println("");
+            csvWriter.flush();
+            csvWriter.close();
+        } catch (IOException e) {
+            System.err.format("Something went wrong: '%s'%n", e.getMessage());
+            e.printStackTrace();
         }
-        System.out.println(neighboursCost);
-        System.out.println(updatesToSend.size());
-        System.out.println(updatesToSend);
-        System.out.println(destinationToForwarder);
+    }
 
-        // IDEA: create a new minimum from scratch. Start minimum at -1
-        // Iterate through the costs per each neighbour.
-        // For each, check if the current min is -1. If it is, then replace. Or, if the current is less than the min, replace
-        // If we replace, record the neighbour drone that caused the change to take place
-        // When done, update the cost for reaching the destination node (in the first row), and update the destinationToFowarder drone (either overriding or updating)
-        //      If this change actually changed the forwarder node, then record this as needed for an update send (check what info is needed for DV update)
-        // If the current minimum is still -1, then remove the entry from the map completely.
+    private void sendUpdates(List<String> updatesToSend){
+        if(updatesToSend.isEmpty()){
+            System.out.println("Skipping DV update send");
+            return;
+        }
+        System.out.println("Sending updated DVs");
+        // Construct message to send
+        StringBuilder updateMessage = new StringBuilder("UPDATE:" + _thisDroneName + ":");
+        for(int i = 0; i < updatesToSend.size() - 1; i++){
+            updateMessage.append(updatesToSend.get(i) + "=" + _costTable[0][_nameToIndex.get(updatesToSend.get(i))] + ",");
+        }
+        updateMessage.append(updatesToSend.get(updatesToSend.size() - 1) + "=" + _costTable[0][_nameToIndex.get(updatesToSend.get(updatesToSend.size() - 1))]);
+        updateMessage.append(":" + updatesToSend.size() + "\n");
+        // Send an update to each neighbour regarding these new costs
+        for(String neighbour : _neighboursCost.keySet()){
+            try{
+                System.out.print("Sending to " + neighbour + "...");
+                Client client = _nameToClientObject.get(neighbour);
+                Socket socket = new Socket(client.getHostname(), client.getPort());
+                DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
+                DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+                dataOut.writeUTF(updateMessage.toString());
+                // Wait for the client's acknowledgement
+                dataIn.readUTF();
+                dataOut.flush();
+                dataOut.close();
+                dataIn.close();
+                socket.close();
+                System.out.println("done");
+            } catch (IOException e){
+                System.err.format("Something went wrong: '%s'%n", e.getMessage());
+                e.printStackTrace();
+            }
 
-        // Account for: updates meaning that a neighbour node is no longer a neighbour node anymore (see Piazza posts for if this is possible).
 
-        // When done, can just completely make the forwarding table from our map.
-
-        // Check, can this exact code be run right from the beginning??
+        }
 
 
     }

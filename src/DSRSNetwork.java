@@ -13,11 +13,6 @@ public class DSRSNetwork {
 
     private static CostTable costTable;
 
-    private static void processCalculation(String data){
-
-
-    }
-
     private static void handleIncomingConnection(Socket socket){
         System.out.println("New DVs received");
         try {
@@ -54,8 +49,8 @@ public class DSRSNetwork {
         try{
 
             Socket socket = new Socket(client.getHostname(), client.getPort());
-            // 5 second timeout
-            socket.setSoTimeout(5*1000);
+            // 10 second timeout
+            socket.setSoTimeout(10*1000);
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
             // Send ping message to the client
@@ -66,7 +61,7 @@ public class DSRSNetwork {
 
             // Wait for the response from the client
             DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-            String msg = dataIn.readUTF();
+            dataIn.readUTF();
 
             // Stop timing
             long endTime = System.currentTimeMillis();
@@ -75,7 +70,8 @@ public class DSRSNetwork {
             client.setResponseTime(timeTaken);
             dataOut.flush();
             dataOut.close();
-            dataOut.close();
+            dataIn.close();
+            socket.close();
             return timeTaken;
 
         } catch (IOException e){
@@ -102,7 +98,7 @@ public class DSRSNetwork {
             while ((row = csvReader.readLine()) != null) {
                 // Read the data from the .csv file and create Client object
                 Client client = new Client(row);
-                if(client.getClientName().equals(thisDroneName)){
+                if (client.getClientName().equals(thisDroneName)) {
                     numMyself++;
                 }
                 clientList.add(client);
