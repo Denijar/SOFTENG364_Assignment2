@@ -61,17 +61,20 @@ public class DSRSNetwork {
 
             // Wait for the response from the client
             DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-            dataIn.readUTF();
-
+            String msg = dataIn.readUTF();
+            
             // Stop timing
             long endTime = System.currentTimeMillis();
             int timeTaken = (int)((endTime - startTime)/1000);
-
-            client.setResponseTime(timeTaken);
             dataOut.flush();
             dataOut.close();
             dataIn.close();
             socket.close();
+
+            if(!msg.equals(ackMessage)){
+                timeTaken = -1;
+            }
+            client.setResponseTime(timeTaken);
             return timeTaken;
 
         } catch (IOException e){

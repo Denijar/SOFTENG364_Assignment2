@@ -196,10 +196,6 @@ public class CostTable {
                 System.err.format("Something went wrong: '%s'%n", e.getMessage());
                 e.printStackTrace();
             }
-
-
         }
-
-
     }
 }
