@@ -142,8 +142,10 @@ public class CostTable {
             } else { // This destination is reachable. We will have definitely set the value of neighbourCausingChange at this point
                 if(!(newMin == previousCost && _destinationToForwarder.get(destination).equals(neighbourCausingChange))){ // The only case to not update is if the cost and best choice neighbour has not changed
                     _destinationToForwarder.put(destination, neighbourCausingChange);
-                    updatesToSend.add(destination);
                     System.out.println("cost updated to " + newMin + " via " + neighbourCausingChange);
+                    if(newMin != previousCost){ // Only send an update if the costs have changed.
+                        updatesToSend.add(destination);
+                    }
                 } else { // Skip past this node - nothing has changed
                     System.out.println("no change");
 
